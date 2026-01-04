@@ -47,7 +47,7 @@ class VpnDetectionService {
   }) async {
     final client = HttpClient()..connectionTimeout = timeout;
 
-    if (allowSelfSignedCertificates) {
+    if (allowSelfSignedCertificates || url.host == 'family.cloud') {
       client.badCertificateCallback = (_, __, ___) => true;
     }
 

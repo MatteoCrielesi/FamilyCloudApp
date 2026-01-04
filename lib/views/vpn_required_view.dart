@@ -1,11 +1,14 @@
 import 'dart:io';
 
 import 'package:external_app_launcher/external_app_launcher.dart';
+import 'package:family_cloud_app/controllers/auth_controller.dart';
 import 'package:family_cloud_app/models/vpn_status.dart';
 import 'package:family_cloud_app/services/vpn_detection_service.dart';
+import 'package:family_cloud_app/views/widget/login_widget.dart';
 import 'package:family_cloud_app/views/widget/vpn_status_widget.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -31,6 +34,7 @@ class _VpnRequiredViewState extends State<VpnRequiredView> {
   String? _desktopTwingatePath;
 
   bool _isTwingateRunning = false;
+  bool _showLoginForm = false;
 
   static final _defaultReachabilityUrl = Uri.parse('https://family.cloud/');
   static final _twingatePlayStoreUrl = Uri.parse(
@@ -88,6 +92,8 @@ class _VpnRequiredViewState extends State<VpnRequiredView> {
 
     setState(() {
       _isChecking = true;
+      // Nascondiamo il form se stiamo riverificando, per evitare stati inconsistenti
+      _showLoginForm = false;
     });
 
     final status = await widget.vpnDetectionService.checkVpnStatus(
@@ -225,26 +231,13 @@ class _VpnRequiredViewState extends State<VpnRequiredView> {
     }
   }
 
-  Future<void> _loginToCloud() async {
+  Future<void> _enableLoginForm() async {
     if (!mounted) {
       return;
     }
-
-    await showDialog<void>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Login al Cloud'),
-          content: const Text('TODO'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Chiudi'),
-            ),
-          ],
-        );
-      },
-    );
+    setState(() {
+      _showLoginForm = true;
+    });
   }
 
   @override
@@ -254,30 +247,113 @@ class _VpnRequiredViewState extends State<VpnRequiredView> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: const Text('FamilyCloudApp'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            VpnStatusWidget(
-              isConnected: _status.isConnected,
-              hasSiteError: _status.hasSiteError,
-              isInternetAvailable: _status.isInternetAvailable,
-              isTwingateRunning: _isTwingateRunning,
-              isChecking: _isChecking,
-              onVerify: _checkStatus,
-              onOpenTwingate: _openTwingate,
-              onLogin: _loginToCloud,
-              desktopTwingatePath: _desktopTwingatePath,
-              onDesktopPickOrOpen: _desktopPickOrOpen,
-              onDesktopDownloadOrChange: _desktopDownloadOrChange,
+      body: Consumer<AuthController>(
+        builder: (context, authController, child) {
+          if (authController.isLoggedIn) {
+             return Center(
+               child: Column(
+                 mainAxisAlignment: MainAxisAlignment.center,
+                 children: [
+                   const Icon(Icons.check_circle, color: Colors.green, size: 64),
+                   const SizedBox(height: 16),
+                   Text(
+                     'Login effettuato con successo!\nBenvenuto ${authController.username}',
+                     textAlign: TextAlign.center,
+                     style: Theme.of(context).textTheme.headlineSmall,
+                   ),
+                   const SizedBox(height: 24),
+                   FilledButton(
+                     onPressed: () {
+                        authController.logout();
+                        setState(() {
+                          _showLoginForm = false;
+                        });
+                     },
+                     child: const Text('Logout'),
+                   ),
+                 ],
+               ),
+             );
+          }
+
+          return SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  VpnStatusWidget(
+                    isConnected: _status.isConnected,
+                    hasSiteError: _status.hasSiteError,
+                    isInternetAvailable: _status.isInternetAvailable,
+                    isTwingateRunning: _isTwingateRunning,
+                    isChecking: _isChecking,
+                    onVerify: _checkStatus,
+                    onOpenTwingate: _openTwingate,
+                    onLogin: _enableLoginForm,
+                    desktopTwingatePath: _desktopTwingatePath,
+                    onDesktopPickOrOpen: _desktopPickOrOpen,
+                    onDesktopDownloadOrChange: _desktopDownloadOrChange,
+                  ),
+                  
+                  if (_status.message != null && !_showLoginForm) ...[
+                    const SizedBox(height: 12),
+                    Text(_status.message!),
+                  ],
+
+                  if (_showLoginForm) ...[
+                    const SizedBox(height: 24),
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Accesso Nextcloud',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    if (authController.error != null)
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error, color: Colors.red),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                authController.error!,
+                                style: const TextStyle(color: Colors.red),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    LoginWidget(
+                      isLoading: authController.isLoading,
+                      onSubmit: (username, password, isAppPassword) async {
+                        // Prima del login, potremmo rifare un check rapido della VPN o assumerci che sia ok.
+                        // AuthController fa già il check.
+                        final url = (widget.reachabilityUrl ?? _defaultReachabilityUrl).toString();
+                        await authController.login(
+                          url: url,
+                          username: username,
+                          password: password,
+                          isAppPassword: isAppPassword,
+                          saveCredentials: true,
+                        );
+                      },
+                    ),
+                  ],
+                ],
+              ),
             ),
-            if (_status.message != null) ...[
-              const SizedBox(height: 12),
-              Text(_status.message!),
-            ],
-          ],
-        ),
+          );
+        },
       ),
     );
   }

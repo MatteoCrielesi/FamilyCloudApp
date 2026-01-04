@@ -1,17 +1,23 @@
-class SecureStorage {
-  SecureStorage();
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-  final Map<String, String> _values = <String, String>{};
+class SecureStorage {
+  SecureStorage() : _storage = const FlutterSecureStorage();
+
+  final FlutterSecureStorage _storage;
 
   Future<void> write(String key, String value) async {
-    _values[key] = value;
+    await _storage.write(key: key, value: value);
   }
 
   Future<String?> read(String key) async {
-    return _values[key];
+    return await _storage.read(key: key);
   }
 
   Future<void> delete(String key) async {
-    _values.remove(key);
+    await _storage.delete(key: key);
+  }
+
+  Future<void> deleteAll() async {
+    await _storage.deleteAll();
   }
 }
