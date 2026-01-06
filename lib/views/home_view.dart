@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:family_cloud_app/controllers/auth_controller.dart';
 import 'package:family_cloud_app/models/vpn_status.dart';
 import 'package:family_cloud_app/services/vpn_detection_service.dart';
+import 'package:family_cloud_app/views/settings_view.dart';
 import 'package:family_cloud_app/views/widget/login_widget.dart';
 import 'package:family_cloud_app/views/widget/vpn_status_widget.dart';
 import 'package:flutter/material.dart';
@@ -212,7 +213,12 @@ class _HomeViewState extends State<HomeView> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.settings),
-                      onPressed: () {}, // TODO
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const SettingsView()),
+                        );
+                      },
                       tooltip: 'Impostazioni',
                     ),
                   ],
