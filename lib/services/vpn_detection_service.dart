@@ -79,8 +79,9 @@ class VpnDetectionService {
         message: e.message,
       );
     } catch (e) {
+      // In caso di errore sconosciuto, assumiamo che non sia connesso per sicurezza
       return VpnStatus(
-        isConnected: true,
+        isConnected: false,
         hasSiteError: true,
         message: e.toString(),
       );

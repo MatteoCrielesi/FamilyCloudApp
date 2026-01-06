@@ -29,6 +29,7 @@ class AuthService {
     required String baseUrl,
     required String username,
     required String password,
+    bool isAppPassword = false,
     bool saveCredentials = false,
   }) async {
     // Ensure baseUrl does not end with a slash for consistent path building
@@ -59,6 +60,7 @@ class AuthService {
           await _secureStorage.write('nextcloud_url', cleanBaseUrl);
           await _secureStorage.write('nextcloud_username', username);
           await _secureStorage.write('nextcloud_password', password);
+          await _secureStorage.write('nextcloud_is_app_password', isAppPassword ? 'true' : 'false');
         }
         return {
           'success': true,
@@ -101,6 +103,7 @@ class AuthService {
       'url': await _secureStorage.read('nextcloud_url'),
       'username': await _secureStorage.read('nextcloud_username'),
       'password': await _secureStorage.read('nextcloud_password'),
+      'isAppPassword': await _secureStorage.read('nextcloud_is_app_password'),
     };
   }
 }

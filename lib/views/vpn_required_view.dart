@@ -4,6 +4,7 @@ import 'package:external_app_launcher/external_app_launcher.dart';
 import 'package:family_cloud_app/controllers/auth_controller.dart';
 import 'package:family_cloud_app/models/vpn_status.dart';
 import 'package:family_cloud_app/services/vpn_detection_service.dart';
+import 'package:family_cloud_app/views/home_view.dart';
 import 'package:family_cloud_app/views/widget/login_widget.dart';
 import 'package:family_cloud_app/views/widget/vpn_status_widget.dart';
 import 'package:file_picker/file_picker.dart';
@@ -57,6 +58,10 @@ class _VpnRequiredViewState extends State<VpnRequiredView> {
         _checkStatus();
       });
     }
+    // Check login status on startup
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AuthController>().checkLoginStatus();
+    });
   }
 
   Future<void> _loadDesktopTwingatePath() async {
@@ -250,30 +255,7 @@ class _VpnRequiredViewState extends State<VpnRequiredView> {
       body: Consumer<AuthController>(
         builder: (context, authController, child) {
           if (authController.isLoggedIn) {
-             return Center(
-               child: Column(
-                 mainAxisAlignment: MainAxisAlignment.center,
-                 children: [
-                   const Icon(Icons.check_circle, color: Colors.green, size: 64),
-                   const SizedBox(height: 16),
-                   Text(
-                     'Login effettuato con successo!\nBenvenuto ${authController.username}',
-                     textAlign: TextAlign.center,
-                     style: Theme.of(context).textTheme.headlineSmall,
-                   ),
-                   const SizedBox(height: 24),
-                   FilledButton(
-                     onPressed: () {
-                        authController.logout();
-                        setState(() {
-                          _showLoginForm = false;
-                        });
-                     },
-                     child: const Text('Logout'),
-                   ),
-                 ],
-               ),
-             );
+             return const HomeView();
           }
 
           return SingleChildScrollView(

@@ -1,7 +1,7 @@
 import 'package:family_cloud_app/controllers/auth_controller.dart';
 import 'package:family_cloud_app/services/auth_service.dart';
 import 'package:family_cloud_app/services/vpn_detection_service.dart';
-import 'package:family_cloud_app/views/vpn_required_view.dart';
+ import 'package:family_cloud_app/views/home_view.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -41,7 +41,7 @@ class FamilyCloudApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
           useMaterial3: true,
         ),
-        home: const VpnRequiredView(),
+         home: const HomeView(),
       ),
     );
   }

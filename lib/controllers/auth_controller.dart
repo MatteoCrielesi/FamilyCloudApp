@@ -22,6 +22,53 @@ class AuthController extends ChangeNotifier {
   String? get username => _username;
   bool get isLoggedIn => _isLoggedIn;
 
+  Future<void> checkLoginStatus() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final creds = await _authService.getSavedCredentials();
+      final url = creds['url'];
+      final username = creds['username'];
+      final password = creds['password'];
+
+      if (url != null && username != null && password != null) {
+        // Verifica connettività base (opzionale, ma consigliato)
+        final uri = Uri.tryParse(url);
+        if (uri != null && uri.hasScheme) {
+             final vpnStatus = await _vpnService.checkVpnStatus(uri);
+             // Procediamo al login solo se la VPN è connessa E non ci sono errori sul sito
+             if (vpnStatus.isConnected && !vpnStatus.hasSiteError) {
+                // Tentativo di login automatico
+                final result = await _authService.login(
+                  baseUrl: url,
+                  username: username,
+                  password: password,
+                  isAppPassword: (creds['isAppPassword'] ?? 'false') == 'true',
+                  saveCredentials: false, // Già salvati
+                );
+
+                if (result['success'] == true) {
+                  _username = result['username'];
+                  _isLoggedIn = true;
+                } else {
+                   // Se il login fallisce (es. password cambiata), facciamo logout locale
+                   if (result['error'] == 'Credenziali non valide') {
+                      await logout();
+                   }
+                }
+             }
+        }
+      }
+    } catch (e) {
+      // Gestione errori silenziosa in fase di avvio
+      debugPrint('Errore durante il checkLoginStatus: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> login({
     required String url,
     required String username,
@@ -56,6 +103,7 @@ class AuthController extends ChangeNotifier {
         baseUrl: url,
         username: username,
         password: password,
+        isAppPassword: isAppPassword,
         saveCredentials: saveCredentials,
       );
 
@@ -84,6 +132,11 @@ class AuthController extends ChangeNotifier {
     _username = null;
     _isLoggedIn = false;
     notifyListeners();
+  }
+
+  /// Da chiamare quando una richiesta API restituisce 401 (Unauthorized)
+  Future<void> handleUnauthorized() async {
+    await logout();
   }
 
   Future<Map<String, String?>> getSavedCredentials() {
